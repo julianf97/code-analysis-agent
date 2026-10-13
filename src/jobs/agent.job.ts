@@ -9,10 +9,13 @@ export async function runAgentJob(): Promise<void> {
   );
 
   for (const message of result.messages) {
-    if ('tool_calls' in message && message.tool_calls?.length) {
-      console.dir(message.tool_calls, { depth: null });
+    const toolCalls = 'tool_calls' in message ? message.tool_calls : undefined;
+
+    if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+      console.dir(toolCalls, { depth: null });
     }
   }
+
   console.log('Resultado del agente:');
   console.dir(result.messages.at(-1)?.content, { depth: null });
 }
