@@ -1,19 +1,22 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, type Relation } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const AnalysisRevision = sequelize.define(
-  'AnalysisRevision',
-  {
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id', primaryKey: true },
-    kind: { type: DataTypes.STRING, allowNull: false, primaryKey: true },
-    branch: { type: DataTypes.TEXT, allowNull: false },
-    commitSha: { type: DataTypes.STRING(40), allowNull: false, field: 'commit_sha' },
-  },
-  {
-    tableName: 'analysis_revisions',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Entity({ name: 'analysis_revisions' })
+export class AnalysisRevision {
+  @PrimaryColumn({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
 
-export default AnalysisRevision;
+  @PrimaryColumn({ type: 'text' })
+  kind!: 'base' | 'comparison';
+
+  @Column({ type: 'text' })
+  branch!: string;
+
+  @Column({ type: 'varchar', name: 'commit_sha', length: 40 })
+  commitSha!: string;
+
+  @ManyToOne(() => Analysis, analysis => analysis.revisions, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

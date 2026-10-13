@@ -1,23 +1,34 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, type Relation } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const LlmUsageEvent = sequelize.define(
-  'LlmUsageEvent',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id' },
-    model: { type: DataTypes.TEXT, allowNull: false },
-    task: { type: DataTypes.TEXT, allowNull: false },
-    inputTokens: { type: DataTypes.INTEGER, allowNull: false, field: 'input_tokens' },
-    outputTokens: { type: DataTypes.INTEGER, allowNull: false, field: 'output_tokens' },
-    estimatedCostUsd: { type: DataTypes.DECIMAL(12,6), allowNull: false, field: 'estimated_cost_usd' },
-    createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at', defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'llm_usage_events',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Entity({ name: 'llm_usage_events' })
+export class LlmUsageEvent {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default LlmUsageEvent;
+  @Column({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
+
+  @Column({ type: 'text' })
+  model!: string;
+
+  @Column({ type: 'text' })
+  task!: string;
+
+  @Column({ type: 'integer', name: 'input_tokens', default: 0 })
+  inputTokens!: number;
+
+  @Column({ type: 'integer', name: 'output_tokens', default: 0 })
+  outputTokens!: number;
+
+  @Column({ type: 'numeric', name: 'estimated_cost_usd', precision: 12, scale: 6, default: '0' })
+  estimatedCostUsd!: string;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @ManyToOne(() => Analysis, analysis => analysis.usageEvents, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

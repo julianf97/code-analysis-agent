@@ -1,22 +1,32 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, type Relation, Index } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const AnalysisStep = sequelize.define(
-  'AnalysisStep',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id' },
-    name: { type: DataTypes.TEXT, allowNull: false },
-    status: { type: DataTypes.STRING, allowNull: false },
-    details: { type: DataTypes.JSONB, allowNull: true },
-    startedAt: { type: DataTypes.DATE, allowNull: false, field: 'started_at', defaultValue: DataTypes.NOW },
-    finishedAt: { type: DataTypes.DATE, allowNull: true, field: 'finished_at' },
-  },
-  {
-    tableName: 'analysis_steps',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Index('analysis_steps_analysis_id_name_key', ['analysisId', 'name'], { unique: true })
+@Entity({ name: 'analysis_steps' })
+export class AnalysisStep {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default AnalysisStep;
+  @Column({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
+
+  @Column({ type: 'text' })
+  name!: string;
+
+  @Column({ type: 'text' })
+  status!: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  details!: Record<string, unknown> | null;
+
+  @Column({ type: 'timestamptz', name: 'started_at', default: () => 'CURRENT_TIMESTAMP' })
+  startedAt!: Date;
+
+  @Column({ type: 'timestamptz', name: 'finished_at', nullable: true })
+  finishedAt!: Date | null;
+
+  @ManyToOne(() => Analysis, analysis => analysis.steps, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

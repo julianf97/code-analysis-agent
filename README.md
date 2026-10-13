@@ -1,28 +1,34 @@
-# Code Analysis Agent — backend en desarrollo
+# Code Analysis Agent — Backend (desarrollo)
 
-API REST de análisis de repositorios. Esta rama contiene **solo la base de infraestructura y el registro de repositorios**; no implementa aún auditorías reales, workers, LangGraph ni informes.
+API REST en TypeScript para investigar repositorios. La rama contiene la base de Express, PostgreSQL y **TypeORM 1.x**, con los endpoints de registro de repositorios. **Todavía no implementa auditorías reales, workers, orquestación LangGraph ni informes.**
 
-## Persistencia: estilo api-agente
+## Arquitectura
 
-La persistencia replica la convención de [api-agente](https://github.com/julianf97/api-agente/tree/main):
+- `src/models/`: 12 clases TypeORM con `@Entity`, `@Column`, `@ManyToOne`, `@OneToMany` y `@OneToOne`.
+- `src/db/index.ts`: `DataSource` PostgreSQL (driver `pg`), con las entidades y migraciones registradas.
+- `src/db/repositories/`: consultas encapsuladas con `dataSource.getRepository(...)`.
+- `src/db/migrations/`: migraciones TypeORM versionadas mediante `MigrationInterface`.
+- `src/server/routes` → `controllers` → `services` → `db/repositories`.
+- `src/agents`, `src/tools`, `src/prompts`: plantilla LangChain original conservada.
 
-- `src/db/index.ts` exporta una única instancia `sequelize`, con `new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {...})` y driver `pg`.
-- Cada modelo en `src/models/<entidad>.ts` utiliza `sequelize.define` y `DataTypes` explícitos.
-- `src/models/associations.ts` declara `hasMany`, `hasOne` y `belongsTo`.
-- `src/models/index.ts` importa modelos, registra asociaciones y exporta modelos.
-- `src/db/repositories/` contiene funciones sencillas como `findRepositoryById`, `findRepositories` y `createRepository`.
-- `scripts/migrate-db.js` utiliza Umzug y `SequelizeStorage` con migraciones versionadas `up/down`.
-- Se conserva `migrations/001_initial.sql` por compatibilidad con la primera versión publicada. La migración inicial no ofrece reversión destructiva.
+No se utiliza `synchronize: true`, `Sequelize`, `Umzug` ni consultas de aplicación mediante `pg.Pool`.
 
-Las propiedades camelCase de TypeScript utilizan `field` cuando la columna histórica tiene snake_case. No se ejecuta `sequelize.sync()`.
+### Compatibilidad de migraciones
 
-**Limitación:** por compatibilidad con el SQL histórico, la primera migración solo admite `DB_SCHEMA=public`. No utilizar otros schemas hasta contar con una migración explícita. Este código no fue probado con PostgreSQL.
+El SQL histórico `migrations/001_initial.sql` se conserva. La migración TypeORM inicial:
 
-## Desarrollo local (PowerShell)
+1. Comprueba que las 12 tablas originales ya existan; si están todas, **las adopta sin recrearlas**.
+2. Si la base está vacía, crea las tablas originales ejecutando el DDL.
+3. Si encuentra solamente algunas de las tablas, **se detiene** para evitar sobrescritura o pérdida de datos.
+4. No permite un rollback destructivo.
+
+Por ahora solo está soportado `DB_SCHEMA=public`. Para otros schemas se requiere una migración específica. Si tenés datos reales, hacé un backup antes de cambiar el ORM. La migración **no verifica todavía diferencias internas de columnas/índices de una base preexistente**.
+
+## Instalación local (PowerShell)
 
 ```powershell
 Copy-Item .env.example .env
-# Editá .env con credenciales
+# Editá los valores
 npm install
 npm run check
 docker compose up -d db
@@ -38,16 +44,9 @@ docker compose logs -f api
 docker compose down
 ```
 
-### Migraciones
+La imagen ejecuta las migraciones con TypeORM antes de iniciar la API. Se mantiene PostgreSQL 15 y el volumen persistente.
 
-```powershell
-npm run db:migrate
-npm run db:migrate:status
-```
-
-`db:migrate:undo` está disponible, pero la migración inicial bloquea borrados automáticos por seguridad.
-
-### Endpoints
+### Endpoints actuales
 
 - `GET /health`
 - `GET /health/dependencies`
@@ -55,8 +54,8 @@ npm run db:migrate:status
 - `GET /api/repositories`
 - `GET /api/repositories/:id`
 
-Los endpoints de `/api` requieren el header `x-api-key` con la variable `ADMIN_API_KEY`. Registrar repositorios solo los guarda en la BD, sin comprobar todavía GitHub.
+Los endpoints `/api` requieren `x-api-key` con `ADMIN_API_KEY`; registrar un repositorio todavía no valida acceso real en GitHub.
 
-### Estado de verificación
+### Estado de comprobación
 
-No se ejecutó `npm install`, `npm run build`, migraciones ni Docker en esta entrega. Es una rama de trabajo, no un backend terminado.
+La implementación se hizo directamente en GitHub. No fue posible descargar dependencias ni ejecutar `npm run check`, una base PostgreSQL o Docker en este entorno; por lo tanto el build y las migraciones reales siguen **sin verificar**. El archivo `package-lock.json` deberá generarse con `npm install` en un entorno con red y versionarse antes del despliegue.

@@ -1,31 +1,43 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, JoinColumn, OneToOne, type Relation } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const AnalysisJob = sequelize.define(
-  'AnalysisJob',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    analysisId: { type: DataTypes.UUID, field: 'analysis_id', allowNull: false, unique: true },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'queued',
-      validate: { isIn: [['queued', 'running', 'completed', 'failed', 'cancelled']] },
-    },
-    attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-    maxAttempts: { type: DataTypes.INTEGER, field: 'max_attempts', allowNull: false, defaultValue: 3 },
-    leasedBy: { type: DataTypes.TEXT, field: 'leased_by', allowNull: true },
-    leaseUntil: { type: DataTypes.DATE, field: 'lease_until', allowNull: true },
-    errorMessage: { type: DataTypes.TEXT, field: 'error_message', allowNull: true },
-    startedAt: { type: DataTypes.DATE, field: 'started_at', allowNull: true },
-    finishedAt: { type: DataTypes.DATE, field: 'finished_at', allowNull: true },
-    createdAt: { type: DataTypes.DATE, field: 'created_at', allowNull: false, defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'analysis_jobs',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Entity({ name: 'analysis_jobs' })
+export class AnalysisJob {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default AnalysisJob;
+  @Column({ type: 'uuid', name: 'analysis_id', unique: true })
+  analysisId!: string;
+
+  @Column({ type: 'text', default: 'queued' })
+  status!: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+  @Column({ type: 'integer', default: 0 })
+  attempts!: number;
+
+  @Column({ type: 'integer', name: 'max_attempts', default: 3 })
+  maxAttempts!: number;
+
+  @Column({ type: 'text', name: 'leased_by', nullable: true })
+  leasedBy!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'lease_until', nullable: true })
+  leaseUntil!: Date | null;
+
+  @Column({ type: 'text', name: 'error_message', nullable: true })
+  errorMessage!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'started_at', nullable: true })
+  startedAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'finished_at', nullable: true })
+  finishedAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @OneToOne(() => Analysis, analysis => analysis.job, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

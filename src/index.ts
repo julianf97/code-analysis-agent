@@ -1,7 +1,8 @@
 import 'dotenv/config';
+import 'reflect-metadata';
 import { createApp } from './server/app.js';
 import { loadEnvironment } from './config/env.js';
-import { initializeDatabase, sequelize } from './db/index.js';
+import { initializeDatabase, closeDatabase } from './db/index.js';
 
 async function main(): Promise<void> {
   const config = loadEnvironment();
@@ -11,12 +12,13 @@ async function main(): Promise<void> {
     console.info('Code Analysis API escuchando en puerto ' + config.PORT);
   });
 
-  async function shutdown() {
-    server.close();
-    await sequelize.close();
-  }
-  process.once('SIGINT', () => { shutdown().catch(console.error); });
-  process.once('SIGTERM', () => { shutdown().catch(console.error); });
+  const shutdown = () => {
+    server.close(() => {
+      closeDatabase().catch(console.error);
+    });
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }
 
 main().catch(error => {

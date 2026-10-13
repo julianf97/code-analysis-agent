@@ -1,20 +1,25 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, type Relation } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const BudgetReservation = sequelize.define(
-  'BudgetReservation',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id' },
-    amountUsd: { type: DataTypes.DECIMAL(12,6), allowNull: false, field: 'amount_usd' },
-    releasedAt: { type: DataTypes.DATE, allowNull: true, field: 'released_at' },
-    createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at', defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'budget_reservations',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Entity({ name: 'budget_reservations' })
+export class BudgetReservation {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default BudgetReservation;
+  @Column({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
+
+  @Column({ type: 'numeric', name: 'amount_usd', precision: 12, scale: 6 })
+  amountUsd!: string;
+
+  @Column({ type: 'timestamptz', name: 'released_at', nullable: true })
+  releasedAt!: Date | null;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @ManyToOne(() => Analysis, analysis => analysis.budgetReservations, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

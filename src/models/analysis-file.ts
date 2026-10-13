@@ -1,20 +1,25 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn, type Relation } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const AnalysisFile = sequelize.define(
-  'AnalysisFile',
-  {
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id', primaryKey: true },
-    path: { type: DataTypes.TEXT, allowNull: false, primaryKey: true },
-    commitSha: { type: DataTypes.STRING(40), allowNull: false, field: 'commit_sha', primaryKey: true },
-    categories: { type: DataTypes.JSONB, allowNull: false },
-    inspectedAt: { type: DataTypes.DATE, allowNull: false, field: 'inspected_at', defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'analysis_files',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Entity({ name: 'analysis_files' })
+export class AnalysisFile {
+  @PrimaryColumn({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
 
-export default AnalysisFile;
+  @PrimaryColumn({ type: 'text' })
+  path!: string;
+
+  @PrimaryColumn({ type: 'varchar', name: 'commit_sha', length: 40 })
+  commitSha!: string;
+
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  categories!: string[];
+
+  @Column({ type: 'timestamptz', name: 'inspected_at', default: () => 'CURRENT_TIMESTAMP' })
+  inspectedAt!: Date;
+
+  @ManyToOne(() => Analysis, analysis => analysis.files, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

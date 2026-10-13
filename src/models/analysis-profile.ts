@@ -1,20 +1,20 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, type Relation } from 'typeorm';
 
-const AnalysisProfile = sequelize.define(
-  'AnalysisProfile',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    name: { type: DataTypes.STRING(100), allowNull: false },
-    configuration: { type: DataTypes.JSONB, allowNull: false },
-    createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at', defaultValue: DataTypes.NOW },
-    updatedAt: { type: DataTypes.DATE, allowNull: false, field: 'updated_at', defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'analysis_profiles',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Entity({ name: 'analysis_profiles' })
+export class AnalysisProfile {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default AnalysisProfile;
+  @Column({ type: 'varchar', length: 100, unique: true })
+  name!: string;
+
+  @Column({ type: 'jsonb' })
+  configuration!: Record<string, unknown>;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @Column({ type: 'timestamptz', name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt!: Date;
+
+}

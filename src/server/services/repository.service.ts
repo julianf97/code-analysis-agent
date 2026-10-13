@@ -3,12 +3,11 @@ import {
   findRepositories,
   findRepositoryById,
 } from '../../db/repositories/repository.repository.js';
-import type { RepositoryAttributes } from '../../models/repository.js';
+import type { Repository } from '../../models/repository.js';
 import { AppError } from '../middlewares/error.middleware.js';
 
-export async function registerRepository(data: Pick<RepositoryAttributes, 'owner' | 'name'>) {
-  const [repository] = await createRepository(data);
-  return repository;
+export function registerRepository(data: Pick<Repository, 'owner' | 'name'>) {
+  return createRepository(data);
 }
 
 export function listRepositories() {

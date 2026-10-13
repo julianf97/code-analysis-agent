@@ -1,21 +1,29 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, type Relation, Index } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const AnalysisReport = sequelize.define(
-  'AnalysisReport',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id' },
-    version: { type: DataTypes.INTEGER, allowNull: false },
-    jsonDocument: { type: DataTypes.JSONB, allowNull: false, field: 'json_document' },
-    markdown: { type: DataTypes.TEXT, allowNull: false },
-    createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at', defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'analysis_reports',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Index('analysis_reports_analysis_id_version_key', ['analysisId', 'version'], { unique: true })
+@Entity({ name: 'analysis_reports' })
+export class AnalysisReport {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default AnalysisReport;
+  @Column({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
+
+  @Column({ type: 'integer' })
+  version!: number;
+
+  @Column({ type: 'jsonb', name: 'json_document' })
+  jsonDocument!: Record<string, unknown>;
+
+  @Column({ type: 'text' })
+  markdown!: string;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @ManyToOne(() => Analysis, analysis => analysis.reports, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}

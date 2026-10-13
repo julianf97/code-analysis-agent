@@ -1,17 +1,12 @@
-import registerAssociations from './associations.js';
-import Repository from './repository.js';
-import Analysis from './analysis.js';
-import AnalysisJob from './analysis-job.js';
-import AnalysisProfile from './analysis-profile.js';
-import AnalysisRevision from './analysis-revision.js';
-import AnalysisStep from './analysis-step.js';
-import AnalysisFile from './analysis-file.js';
-import AnalysisFinding from './analysis-finding.js';
-import AnalysisReport from './analysis-report.js';
-import AnalysisMessage from './analysis-message.js';
-import LlmUsageEvent from './llm-usage-event.js';
-import BudgetReservation from './budget-reservation.js';
-
-registerAssociations({ Repository, Analysis, AnalysisJob, AnalysisProfile, AnalysisRevision, AnalysisStep, AnalysisFile, AnalysisFinding, AnalysisReport, AnalysisMessage, LlmUsageEvent, BudgetReservation });
-
-export { Repository, Analysis, AnalysisJob, AnalysisProfile, AnalysisRevision, AnalysisStep, AnalysisFile, AnalysisFinding, AnalysisReport, AnalysisMessage, LlmUsageEvent, BudgetReservation };
+export { Repository } from './repository.js';
+export { Analysis } from './analysis.js';
+export { AnalysisJob } from './analysis-job.js';
+export { AnalysisProfile } from './analysis-profile.js';
+export { AnalysisRevision } from './analysis-revision.js';
+export { AnalysisStep } from './analysis-step.js';
+export { AnalysisFile } from './analysis-file.js';
+export { AnalysisFinding } from './analysis-finding.js';
+export { AnalysisReport } from './analysis-report.js';
+export { AnalysisMessage } from './analysis-message.js';
+export { LlmUsageEvent } from './llm-usage-event.js';
+export { BudgetReservation } from './budget-reservation.js';

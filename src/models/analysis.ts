@@ -1,75 +1,92 @@
-import { DataTypes, type Model, type Optional } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany, OneToOne, type Relation, Index } from 'typeorm';
+import { Repository } from './repository.js';
+import { AnalysisJob } from './analysis-job.js';
+import { AnalysisRevision } from './analysis-revision.js';
+import { AnalysisStep } from './analysis-step.js';
+import { AnalysisFile } from './analysis-file.js';
+import { AnalysisFinding } from './analysis-finding.js';
+import { AnalysisReport } from './analysis-report.js';
+import { AnalysisMessage } from './analysis-message.js';
+import { LlmUsageEvent } from './llm-usage-event.js';
+import { BudgetReservation } from './budget-reservation.js';
 
-export type AnalysisMode = 'directed' | 'autonomous';
-export type AnalysisDepth = 'QUICK' | 'STANDARD' | 'DEEP';
-export type AnalysisStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'partial';
+@Index('analyses_repo_idx', ['repositoryId', 'createdAt'])
+@Entity({ name: 'analyses' })
+export class Analysis {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export interface AnalysisAttributes {
-  id: string;
-  repositoryId: string;
-  mode: AnalysisMode;
-  depth: AnalysisDepth;
-  question: string | null;
-  categories: string[];
-  branch: string;
-  compareBranch: string | null;
-  config: Record<string, unknown>;
-  status: AnalysisStatus;
-  summary: string | null;
-  errorMessage: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  completedAt: Date | null;
+  @Column({ type: 'uuid', name: 'repository_id' })
+  repositoryId!: string;
+
+  @Column({ type: 'text' })
+  mode!: 'directed' | 'autonomous';
+
+  @Column({ type: 'text' })
+  depth!: 'QUICK' | 'STANDARD' | 'DEEP';
+
+  @Column({ type: 'text', nullable: true })
+  question!: string | null;
+
+  @Column({ type: 'jsonb' })
+  categories!: string[];
+
+  @Column({ type: 'text' })
+  branch!: string;
+
+  @Column({ type: 'text', name: 'compare_branch', nullable: true })
+  compareBranch!: string | null;
+
+  @Column({ type: 'jsonb' })
+  config!: Record<string, unknown>;
+
+  @Column({ type: 'text', default: 'queued' })
+  status!: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'partial';
+
+  @Column({ type: 'text', nullable: true })
+  summary!: string | null;
+
+  @Column({ type: 'text', name: 'error_message', nullable: true })
+  errorMessage!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @Column({ type: 'timestamptz', name: 'updated_at', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt!: Date;
+
+  @Column({ type: 'timestamptz', name: 'completed_at', nullable: true })
+  completedAt!: Date | null;
+
+  @ManyToOne(() => Repository, repository => repository.analyses, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'repository_id' })
+  repository!: Relation<Repository>;
+
+  @OneToOne(() => AnalysisJob, child => child.analysis)
+  job!: Relation<AnalysisJob>;
+
+  @OneToMany(() => AnalysisRevision, child => child.analysis)
+  revisions!: Relation<AnalysisRevision[]>;
+
+  @OneToMany(() => AnalysisStep, child => child.analysis)
+  steps!: Relation<AnalysisStep[]>;
+
+  @OneToMany(() => AnalysisFile, child => child.analysis)
+  files!: Relation<AnalysisFile[]>;
+
+  @OneToMany(() => AnalysisFinding, child => child.analysis)
+  findings!: Relation<AnalysisFinding[]>;
+
+  @OneToMany(() => AnalysisReport, child => child.analysis)
+  reports!: Relation<AnalysisReport[]>;
+
+  @OneToMany(() => AnalysisMessage, child => child.analysis)
+  messages!: Relation<AnalysisMessage[]>;
+
+  @OneToMany(() => LlmUsageEvent, child => child.analysis)
+  usageEvents!: Relation<LlmUsageEvent[]>;
+
+  @OneToMany(() => BudgetReservation, child => child.analysis)
+  budgetReservations!: Relation<BudgetReservation[]>;
+
 }
-type AnalysisCreation = Optional<AnalysisAttributes, 'id' | 'question' | 'compareBranch' | 'status' | 'summary' | 'errorMessage' | 'createdAt' | 'updatedAt' | 'completedAt'>;
-export interface AnalysisInstance extends Model<AnalysisAttributes, AnalysisCreation>, AnalysisAttributes {}
-
-const Analysis = sequelize.define<AnalysisInstance>(
-  'Analysis',
-  {
-    id: {
-      type: DataTypes.UUID,
-      primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
-    },
-    repositoryId: {
-      type: DataTypes.UUID,
-      field: 'repository_id',
-      allowNull: false,
-    },
-    mode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: { isIn: [['directed', 'autonomous']] },
-    },
-    depth: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: { isIn: [['QUICK', 'STANDARD', 'DEEP']] },
-    },
-    question: { type: DataTypes.TEXT, allowNull: true },
-    categories: { type: DataTypes.JSONB, allowNull: false },
-    branch: { type: DataTypes.TEXT, allowNull: false },
-    compareBranch: { type: DataTypes.TEXT, field: 'compare_branch', allowNull: true },
-    config: { type: DataTypes.JSONB, allowNull: false },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'queued',
-      validate: { isIn: [['queued', 'running', 'completed', 'failed', 'cancelled', 'partial']] },
-    },
-    summary: { type: DataTypes.TEXT, allowNull: true },
-    errorMessage: { type: DataTypes.TEXT, field: 'error_message', allowNull: true },
-    createdAt: { type: DataTypes.DATE, field: 'created_at', allowNull: false, defaultValue: DataTypes.NOW },
-    updatedAt: { type: DataTypes.DATE, field: 'updated_at', allowNull: false, defaultValue: DataTypes.NOW },
-    completedAt: { type: DataTypes.DATE, field: 'completed_at', allowNull: true },
-  },
-  {
-    tableName: 'analyses',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
-
-export default Analysis;

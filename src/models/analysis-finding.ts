@@ -1,29 +1,53 @@
-import { DataTypes } from 'sequelize';
-import { sequelize } from '../db/index.js';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn, type Relation, Index } from 'typeorm';
+import { Analysis } from './analysis.js';
 
-const AnalysisFinding = sequelize.define(
-  'AnalysisFinding',
-  {
-    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
-    analysisId: { type: DataTypes.UUID, allowNull: false, field: 'analysis_id' },
-    fingerprint: { type: DataTypes.STRING(64), allowNull: false },
-    title: { type: DataTypes.TEXT, allowNull: false },
-    category: { type: DataTypes.TEXT, allowNull: false },
-    description: { type: DataTypes.TEXT, allowNull: false },
-    priority: { type: DataTypes.STRING, allowNull: false },
-    evidence: { type: DataTypes.JSONB, allowNull: false },
-    impact: { type: DataTypes.TEXT, allowNull: false },
-    recommendation: { type: DataTypes.TEXT, allowNull: false },
-    action: { type: DataTypes.STRING, allowNull: false },
-    justification: { type: DataTypes.TEXT, allowNull: false },
-    confidence: { type: DataTypes.DECIMAL(4,3), allowNull: false },
-    createdAt: { type: DataTypes.DATE, allowNull: false, field: 'created_at', defaultValue: DataTypes.NOW },
-  },
-  {
-    tableName: 'analysis_findings',
-    schema: process.env.DB_USE_TEST_SCHEMA === 'true' ? process.env.DB_TEST_SCHEMA : process.env.DB_SCHEMA || 'public',
-    timestamps: false,
-  },
-);
+@Index('analysis_findings_analysis_id_fingerprint_key', ['analysisId', 'fingerprint'], { unique: true })
+@Entity({ name: 'analysis_findings' })
+export class AnalysisFinding {
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
-export default AnalysisFinding;
+  @Column({ type: 'uuid', name: 'analysis_id' })
+  analysisId!: string;
+
+  @Column({ type: 'varchar', length: 64 })
+  fingerprint!: string;
+
+  @Column({ type: 'text' })
+  title!: string;
+
+  @Column({ type: 'text' })
+  category!: string;
+
+  @Column({ type: 'text' })
+  description!: string;
+
+  @Column({ type: 'text' })
+  priority!: 'Critical' | 'High' | 'Medium' | 'Low';
+
+  @Column({ type: 'jsonb' })
+  evidence!: Record<string, unknown>;
+
+  @Column({ type: 'text' })
+  impact!: string;
+
+  @Column({ type: 'text' })
+  recommendation!: string;
+
+  @Column({ type: 'text' })
+  action!: 'Keep' | 'Refactor' | 'Migrate' | 'Remove';
+
+  @Column({ type: 'text' })
+  justification!: string;
+
+  @Column({ type: 'numeric', precision: 4, scale: 3 })
+  confidence!: string;
+
+  @Column({ type: 'timestamptz', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt!: Date;
+
+  @ManyToOne(() => Analysis, analysis => analysis.findings, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'analysis_id' })
+  analysis!: Relation<Analysis>;
+
+}
