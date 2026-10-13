@@ -14,6 +14,7 @@ const envSchema = z.object({
   ADMIN_API_KEY: z.string().min(32),
   GITHUB_TOKEN: z.string().min(10),
   OPENAI_API_KEY: z.string().min(10),
+  OPENAI_MODEL: z.string().min(1).default('gpt-4.1-mini'),
   OPENAI_MODEL_FAST: z.string().min(1).default('gpt-4.1-mini'),
   OPENAI_MODEL_REASONING: z.string().min(1).default('gpt-4.1'),
   OPENAI_MODEL_REPORT: z.string().min(1).default('gpt-4.1-mini'),

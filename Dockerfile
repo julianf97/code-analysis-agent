@@ -2,7 +2,7 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
-COPY tsconfig.json ./
+COPY tsconfig.json nest-cli.json ./
 COPY src ./src
 RUN npm run build
 
@@ -16,4 +16,4 @@ COPY --chown=node:node migrations ./migrations
 COPY --chown=node:node scripts ./scripts
 USER node
 EXPOSE 3000
-CMD ["sh", "-c", "node scripts/migrate-db.js up && node dist/index.js"]
+CMD ["sh", "-c", "node scripts/migrate-db.js up && node dist/main.js"]

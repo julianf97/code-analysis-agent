@@ -1,77 +1,125 @@
-# Code Analysis Agent — Backend (desarrollo)
+# Code Analysis Agent — Backend NestJS
 
-API REST en TypeScript para investigar repositorios. La rama contiene la base de Express, PostgreSQL y **TypeORM 1.x**, con los endpoints de registro de repositorios. **Todavía no implementa auditorías reales, workers, orquestación LangGraph ni informes.**
+Base de API REST construida con **NestJS 11**, **TypeORM 1.x** y PostgreSQL. Usa el repositorio [notifications](https://github.com/julianf97/notifications) como referencia para organizar módulos, controladores y DTOs.
+
+> **Estado:** esta rama implementa la arquitectura de NestJS y los endpoints de salud y repositorios. Todavía no existe el worker de análisis, la investigación de GitHub con el agente ni la generación de informes. La conversión requiere comprobar el build y el arranque local.
 
 ## Arquitectura
 
-- `src/models/`: 12 clases TypeORM con `@Entity`, `@Column`, `@ManyToOne`, `@OneToMany` y `@OneToOne`.
-- `src/db/index.ts`: `DataSource` PostgreSQL (driver `pg`), con las entidades y migraciones registradas.
-- `src/db/repositories/`: consultas encapsuladas con `dataSource.getRepository(...)`.
-- `src/db/migrations/`: migraciones TypeORM versionadas mediante `MigrationInterface`.
-- `src/server/routes` → `controllers` → `services` → `db/repositories`.
-- `src/agents`, `src/tools`, `src/prompts`: plantilla LangChain original conservada.
+```text
+src/
+├── main.ts
+├── app.module.ts
+├── auth/
+│   └── api-key.guard.ts
+├── database/
+│   └── database.module.ts
+├── db/
+│   ├── database.options.ts
+│   ├── index.ts                  # DataSource exclusivo para migraciones CLI
+│   └── migrations/
+├── models/                      # 12 entidades TypeORM
+└── modules/
+    ├── health/
+    │   ├── health.module.ts
+    │   ├── health.controller.ts
+    │   └── health.service.ts
+    └── repositories/
+        ├── dto/
+        │   ├── create-repository.dto.ts
+        │   └── repository-response.dto.ts
+        ├── presenters/
+        │   └── repositories.presenter.ts
+        ├── repositories.module.ts
+        ├── repositories.controller.ts
+        ├── repositories.service.ts
+        └── repositories.repository.ts
+```
 
-No se utiliza `synchronize: true`, `Sequelize`, `Umzug` ni consultas de aplicación mediante `pg.Pool`.
+**Flujo:** Module registra dependencias → Controller recibe/valida → Service aplica las reglas → Repository encapsula TypeORM → PostgreSQL. Los DTOs usan `class-validator` y `class-transformer`, y los endpoints quedan documentados con `@nestjs/swagger`. No se importa `@nestjs/typeorm` en los services ni en los controllers.
 
-## TypeScript y tests
+La aplicación utiliza `TypeOrmModule.forRootAsync` y `TypeOrmModule.forFeature`, con `synchronize: false` para proteger la base de datos. Las migraciones antiguas se conservan. El archivo `src/db/index.ts` se utiliza **solo por scripts/migrate-db.js**; Nest gestiona su propio `DataSource`.
 
-El archivo `tsconfig.json` compila únicamente `src/` para mantener el entrypoint `dist/index.js`. Los tests tienen su propio `tests/tsconfig.json`, que hereda `types: ["node"]`, los decoradores TypeORM y las demás opciones.
+## Entorno local (sin Docker)
+
+En `.env`, usá tu PostgreSQL local:
+
+```dotenv
+NODE_ENV=development
+PORT=3000
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=code_analysis
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_SCHEMA=public
+DB_TEST_SCHEMA=code_analysis_test
+DB_USE_TEST_SCHEMA=false
+ADMIN_API_KEY=una_clave_segura_de_al_menos_32_caracteres
+GITHUB_TOKEN=tu_token_github_solo_lectura
+OPENAI_API_KEY=tu_api_key_openai
+```
+
+Las demás variables de presupuesto y modelos permanecen en `.env.example`. No subas credenciales a GitHub.
 
 ```powershell
 npm install
 npm run check
-npm run check:tests
+npm test
+npm run build
+npm run db:migrate:status
+npm run dev
+```
+
+Al cambiar dependencias, **ejecutá `npm install`** para actualizar tu `package-lock.json` local y luego versioná el lock actualizado. El lock anterior de la rama puede quedar desactualizado hasta esa instalación.
+
+### Swagger
+
+Una vez arrancada la API, entrá a:
+
+- [Swagger UI](http://localhost:3000/docs) — documentación y pruebas de endpoints.
+- [Health](http://localhost:3000/health) — proceso HTTP.
+- [Dependencias](http://localhost:3000/health/dependencies) — conexión a PostgreSQL.
+
+Endpoints disponibles:
+
+| Método | Ruta | Autenticación |
+|---|---|---|
+| GET | /health | Pública |
+| GET | /health/dependencies | Pública |
+| GET | /api/repositories | Header `x-api-key` |
+| GET | /api/repositories/:id | Header `x-api-key` |
+| POST | /api/repositories | Header `x-api-key` |
+
+Ejemplo para el registro en Swagger:
+
+```json
+{"owner": "julianf97", "name": "code-analysis-agent"}
+```
+
+En Swagger presioná **Authorize** y completá el valor de `ADMIN_API_KEY`.
+
+**Compatibilidad:** los endpoints siguen devolviendo objetos con la propiedad `data` como hacía Express. La integración con GitHub todavía está pendiente: registrar un repositorio no verifica acceso remoto.
+
+## Migraciones y datos
+
+Las 12 tablas de la aplicación y `typeorm_migrations` se mantienen. No se realiza `synchronize`, no se borran registros ni se cambia el schema `public`. Podés inspeccionar todas las tablas desde DBeaver.
+
+```powershell
+npm run db:migrate:status
+npm run db:migrate
+```
+
+La migración inicial no tiene rollback destructivo y sólo soporta `DB_SCHEMA=public`.
+
+## Validación
+
+```powershell
+npm run check
 npm test
 npm run build
 ```
 
-`npm run check` revisa **el backend y los tests** sin generar archivos; `npm run check:tests` comprueba únicamente los tests. `npm test` los ejecuta.
+Estos comandos deben ejecutarse en tu máquina con las dependencias instaladas. La migración de NestJS se publicó en la rama, pero todavía no se verificó una ejecución completa de la aplicación contra tu PostgreSQL local.
 
-Si VS Code sigue mostrando errores en `node:test` o `node:assert/strict` después de instalar dependencias, ejecutá **TypeScript: Restart TS Server** desde la paleta de comandos (Ctrl+Shift+P) y comprobá que el editor está abierto en la carpeta raíz del proyecto.
-
-## Compatibilidad de migraciones
-
-El SQL histórico `migrations/001_initial.sql` se conserva. La migración TypeORM inicial:
-
-1. Comprueba que las 12 tablas originales ya existan; si están todas, las adopta sin recrearlas.
-2. Si la base está vacía, crea las tablas originales ejecutando el DDL.
-3. Si encuentra solamente algunas de las tablas, se detiene para evitar sobrescritura o pérdida de datos.
-4. No permite un rollback destructivo.
-
-Por ahora solo está soportado `DB_SCHEMA=public`. Para otros schemas se requiere una migración específica. Si tenés datos reales, hacé un backup antes de cambiar el ORM. La migración **no verifica todavía diferencias internas de columnas/índices de una base preexistente**.
-
-## Instalación local (PowerShell)
-
-```powershell
-Copy-Item .env.example .env
-# Editá los valores
-npm install
-npm run check
-docker compose up -d db
-npm run db:migrate
-npm run dev
-```
-
-### Docker
-
-```powershell
-docker compose up -d --build
-docker compose logs -f api
-docker compose down
-```
-
-La imagen ejecuta las migraciones con TypeORM antes de iniciar la API. Se mantiene PostgreSQL 15 y el volumen persistente.
-
-### Endpoints actuales
-
-- `GET /health`
-- `GET /health/dependencies`
-- `POST /api/repositories`
-- `GET /api/repositories`
-- `GET /api/repositories/:id`
-
-Los endpoints `/api` requieren `x-api-key` con `ADMIN_API_KEY`; registrar un repositorio todavía no valida acceso real en GitHub.
-
-### Estado de comprobación
-
-Las correcciones se publican directamente en GitHub. El proyecto debe compilarse y probarse localmente con `npm run check` y `npm test` porque no hay dependencias descargadas en este entorno. El archivo `package-lock.json` deberá generarse con `npm install` y versionarse antes del despliegue.
+El procesamiento asincrónico de análisis, los jobs, LangGraph, los presupuestos y los informes son etapas futuras.
