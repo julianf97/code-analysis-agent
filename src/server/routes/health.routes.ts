@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { getSequelize } from '../../db/sequelize.js';
+import { sequelize } from '../../db/index.js';
 import { asyncHandler } from '../middlewares/async.middleware.js';
 
 export const healthRoutes = Router();
 
 healthRoutes.get('/', (_req, res) => res.json({ status: 'ok' }));
 healthRoutes.get('/dependencies', asyncHandler(async (_req, res) => {
-  await getSequelize().authenticate();
+  await sequelize.authenticate();
   res.json({ status: 'ok', postgres: 'available', orm: 'sequelize' });
 }));

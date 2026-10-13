@@ -1,25 +1,26 @@
-import { getModels } from '../models/index.js';
+import Repository, { type RepositoryAttributes } from '../../models/repository.js';
 
-export interface RegisterRepositoryInput {
-  owner: string;
-  name: string;
+export function findRepositories() {
+  return Repository.findAll({
+    order: [['createdAt', 'DESC']],
+  });
 }
 
-export class RepositoryRepository {
-  async create(input: RegisterRepositoryInput) {
-    const { Repository } = getModels();
-    const [repository] = await Repository.findOrCreate({
-      where: { provider: 'github', owner: input.owner, name: input.name },
-      defaults: { ...input, provider: 'github' },
-    });
-    return repository;
-  }
+export function findRepositoryById(id: string) {
+  return Repository.findByPk(id);
+}
 
-  async findAll() {
-    return getModels().Repository.findAll({ order: [['created_at', 'DESC']] });
-  }
-
-  async findById(id: string) {
-    return getModels().Repository.findByPk(id);
-  }
+export function createRepository(data: Pick<RepositoryAttributes, 'owner' | 'name'>) {
+  return Repository.findOrCreate({
+    where: {
+      provider: 'github',
+      owner: data.owner,
+      name: data.name,
+    },
+    defaults: {
+      provider: 'github',
+      owner: data.owner,
+      name: data.name,
+    },
+  });
 }

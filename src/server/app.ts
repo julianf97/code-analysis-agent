@@ -1,6 +1,6 @@
 import express from 'express';
 import { healthRoutes } from './routes/health.routes.js';
-import { repositoryRoutes } from './routes/repository.routes.js';
+import repositoryRoutes from './routes/repository.routes.js';
 import { requireAdmin } from './middlewares/auth.middleware.js';
 import { errorHandler, notFound } from './middlewares/error.middleware.js';
 

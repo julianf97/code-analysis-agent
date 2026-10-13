@@ -18,7 +18,8 @@ services:
     build: .
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/code_analysis
+      DB_HOST: db
+      DB_PORT: 5432
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:

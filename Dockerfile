@@ -12,6 +12,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node migrations ./migrations
+COPY --chown=node:node scripts ./scripts
 USER node
 EXPOSE 3000
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "node scripts/migrate-db.js up && node dist/index.js"]

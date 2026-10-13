@@ -1,21 +1,24 @@
-import { RepositoryRepository } from '../../db/repositories/repository.repository.js';
+import {
+  createRepository,
+  findRepositories,
+  findRepositoryById,
+} from '../../db/repositories/repository.repository.js';
+import type { RepositoryAttributes } from '../../models/repository.js';
 import { AppError } from '../middlewares/error.middleware.js';
-import type { RegisterRepositoryInput } from '../../db/repositories/repository.repository.js';
 
-export class RepositoryService {
-  constructor(private readonly repository = new RepositoryRepository()) {}
+export async function registerRepository(data: Pick<RepositoryAttributes, 'owner' | 'name'>) {
+  const [repository] = await createRepository(data);
+  return repository;
+}
 
-  async register(input: RegisterRepositoryInput) {
-    return this.repository.create(input);
+export function listRepositories() {
+  return findRepositories();
+}
+
+export async function getRepositoryById(id: string) {
+  const repository = await findRepositoryById(id);
+  if (!repository) {
+    throw new AppError(404, 'REPOSITORY_NOT_FOUND', 'Repositorio no registrado');
   }
-
-  async list() {
-    return this.repository.findAll();
-  }
-
-  async find(id: string) {
-    const repository = await this.repository.findById(id);
-    if (!repository) throw new AppError(404, 'REPOSITORY_NOT_FOUND', 'Repositorio no registrado');
-    return repository;
-  }
+  return repository;
 }

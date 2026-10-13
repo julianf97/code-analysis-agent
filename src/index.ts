@@ -1,20 +1,22 @@
 import 'dotenv/config';
 import { createApp } from './server/app.js';
 import { loadEnvironment } from './config/env.js';
-import { runMigrations } from './db/migrate.js';
-import { closeSequelize } from './db/sequelize.js';
+import { initializeDatabase, sequelize } from './db/index.js';
 
 async function main(): Promise<void> {
   const config = loadEnvironment();
-  await runMigrations();
+  await initializeDatabase();
+
   const server = createApp().listen(config.PORT, () => {
     console.info('Code Analysis API escuchando en puerto ' + config.PORT);
   });
-  const shutdown = () => server.close(() => {
-    closeSequelize().catch(console.error);
-  });
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+
+  async function shutdown() {
+    server.close();
+    await sequelize.close();
+  }
+  process.once('SIGINT', () => { shutdown().catch(console.error); });
+  process.once('SIGTERM', () => { shutdown().catch(console.error); });
 }
 
 main().catch(error => {
