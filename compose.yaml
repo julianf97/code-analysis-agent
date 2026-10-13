@@ -1,0 +1,6 @@
+services:
+  agent:
+    build: .
+    init: true
+    env_file: .env
+    restart: "no"
