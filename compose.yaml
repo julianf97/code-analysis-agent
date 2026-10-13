@@ -1,6 +1,39 @@
 services:
-  agent:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: code_analysis
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - code_analysis_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d code_analysis"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+  api:
     build: .
-    init: true
     env_file: .env
-    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/code_analysis
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  worker:
+    build: .
+    command: ["node", "dist/workers/analysis.worker.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/code_analysis
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  code_analysis_db:

@@ -1,13 +1,23 @@
 import 'dotenv/config';
-import { AGENT_CRON_ENABLED } from './config/cron.js';
-import { startAgentScheduler } from './schedulers/agent.scheduler.js';
-import { runAgentJob } from './jobs/agent.job.js';
+import { createApp } from './server/app.js';
+import { loadEnvironment } from './config/env.js';
+import { runMigrations } from './db/migrate.js';
+import { closePool } from './db/pool.js';
 
-if (AGENT_CRON_ENABLED) {
-  startAgentScheduler();
-} else {
-  runAgentJob().catch((error: unknown) => {
-    console.error('Error ejecutando el agente:', error);
-    process.exitCode = 1;
+async function main(): Promise<void> {
+  const config = loadEnvironment();
+  await runMigrations();
+  const server = createApp().listen(config.PORT, () => {
+    console.info('Code Analysis API escuchando en puerto ' + config.PORT);
   });
+  const shutdown = () => server.close(() => {
+    closePool().catch(console.error);
+  });
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
+
+main().catch(error => {
+  console.error('No se pudo iniciar la API:', error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});
