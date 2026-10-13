@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { createApp } from './server/app.js';
 import { loadEnvironment } from './config/env.js';
 import { runMigrations } from './db/migrate.js';
-import { closePool } from './db/pool.js';
+import { closeSequelize } from './db/sequelize.js';
 
 async function main(): Promise<void> {
   const config = loadEnvironment();
@@ -11,7 +11,7 @@ async function main(): Promise<void> {
     console.info('Code Analysis API escuchando en puerto ' + config.PORT);
   });
   const shutdown = () => server.close(() => {
-    closePool().catch(console.error);
+    closeSequelize().catch(console.error);
   });
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

@@ -1,62 +1,65 @@
-# code-analysis-agent — plantilla básica LangChain
+# Code Analysis Agent — Backend (en desarrollo)
 
-Proyecto base en **Node.js + TypeScript + LangChain + OpenAI**, basado en la arquitectura del repositorio [`agent-ts-langchain`](https://github.com/julianf97/agent-ts-langchain). Es una plantilla reutilizable, **no un agente de análisis de código terminado**.
+Base de una API REST para investigar repositorios GitHub usando Node.js, TypeScript, Express, Sequelize, PostgreSQL y LangChain. **La auditoría autónoma, LangGraph, workers, comparación de ramas y generación de informes todavía no están implementados.**
 
 ## Arquitectura
 
-```text
-src/
-  index.ts                     # Punto de entrada
-  agents/agent.ts               # createAgent: modelo + tools + prompt
-  config/agent.ts               # Tarea configurable
-  config/model.ts               # Conexión al LLM
-  config/cron.ts                # Configuración cron (opcional)
-  prompts/agent.prompt.ts       # System prompt
-  tools/index.ts                # Registro de tools
-  tools/date.tool.ts            # Tool funcional de ejemplo
-  jobs/agent.job.ts             # Invocación del agente y logs
-  schedulers/agent.scheduler.ts # Ejecución programada (opcional)
-  api/client.ts                 # Cliente HTTP reutilizable (sin uso por defecto)
-  interfaces/                   # Contratos TypeScript
-  validators/                   # Validadores
-```
+Se conserva la plantilla inicial de `agents/`, `tools/`, `prompts/`, `config/` y `validators/`. Se agregaron capas diferenciadas:
 
-## Ejecutar en local (PowerShell)
+- `src/server/`: routes → controllers → services.
+- `src/db/repositories/`: consultas CRUD encapsuladas con Sequelize.
+- `src/db/models/`: modelos y relaciones del esquema en Sequelize.
+- `src/db/sequelize.ts`: conexión y pool del ORM mediante el driver `pg`.
+- `src/db/migrate.ts`: ejecución versionada de migraciones con Sequelize.
+- `migrations/001_initial.sql`: DDL inicial, conservado para compatibilidad con la versión anterior.
 
-Requiere **Node.js 22 o superior**, una API key de OpenAI con crédito y un modelo que admita tools.
+**No usamos `sync({ force: true })` ni `sync({ alter: true })`.** Las restricciones e índices se mantienen en la migración SQL inicial; el acceso cotidiano a datos usa modelos y repositorios Sequelize.
+
+## Configuración
+
+Requiere Node.js >=22, PostgreSQL 15 y credenciales válidas. Copiá `.env.example` a `.env` y establecé al menos `ADMIN_API_KEY`, `GITHUB_TOKEN` y `OPENAI_API_KEY`. No subas el archivo `.env`.
+
+### Ejecutar en local (PowerShell)
 
 ```powershell
-npm install
 Copy-Item .env.example .env
-# Editá .env con tu OPENAI_API_KEY
+# Editá .env; si usás la DB del compose, DATABASE_URL apunta a localhost:5433
+npm install
+npm run check
+npm run migrate
 npm run dev
 ```
 
-Por defecto ejecuta **una vez** la tarea definida en `AGENT_TASK`. También podés usar `npm run build` y `npm start`.
-
-## Docker
+### Docker
 
 ```powershell
 Copy-Item .env.example .env
 # Editá .env
-docker compose up --build
+docker compose up -d --build
+docker compose logs -f api
+docker compose down
 ```
 
-Para ejecución periódica, configurá `AGENT_CRON_ENABLED=true` y una expresión `AGENT_CRON` válida. En Docker, habilitar el cron permite mantener el proceso activo; con el cron desactivado, termina al ejecutar una vez. Detener: `docker compose down`.
+El contenedor de API ejecuta migraciones antes de iniciar el servidor. PostgreSQL conserva los datos en un volumen. El servicio worker se incorporará cuando exista el procesamiento de jobs.
 
-## Cómo adaptarlo a tu caso
+### Endpoints disponibles (base inicial)
 
-1. Escribí las instrucciones de tu agente en `src/prompts/agent.prompt.ts`.
-2. Creá tools en `src/tools/` mediante `tool()` y esquemas Zod.
-3. Registralas en `src/tools/index.ts`.
-4. Si consumís una API, reutilizá `src/api/client.ts` y configurá `API_BASE_URL` y `API_TOKEN`.
-5. Cambiá `AGENT_TASK` o el contenido de `src/jobs/agent.job.ts` para indicar qué debe hacer.
-6. Elegí ejecución puntual o cron con `AGENT_CRON_ENABLED`.
+- `GET /health` — estado del proceso.
+- `GET /health/dependencies` — comprueba conexión Sequelize/PostgreSQL.
+- `POST /api/repositories` — registra el nombre y dueño de un repo GitHub en PostgreSQL.
+- `GET /api/repositories` — lista repos registrados.
+- `GET /api/repositories/:id` — obtiene un repo registrado.
 
-**Flujo:** `index → job → createAppAgent → createModel + createAgentTools + prompt → agent.invoke → tool calls → respuesta`.
+Los endpoints bajo `/api` requieren el header `x-api-key` con el valor de `ADMIN_API_KEY`. Por ahora registrar un repositorio **no verifica el acceso a GitHub**; la integración con el provider está pendiente.
 
-## Qué se conservó y qué se cambió
+Ejemplo:
 
-Se conservó el patrón original `agents / api / config / interfaces / jobs / prompts / schedulers / tools / validators`, con `createAgent`, `ChatOpenAI`, Zod, `node-cron`, `.env`, Docker y TS ESM. Se sustituyeron autenticación ERP, documentos, facturas y reglas de lotes por una tool autónoma de fecha y un cliente HTTP de ejemplo. Se eliminó la dependencia de la red Docker externa del ERP.
+```powershell
+$headers = @{ 'x-api-key' = 'el_valor_de_ADMIN_API_KEY' }
+$body = @{ owner = 'julianf97'; name = 'code-analysis-agent' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/api/repositories' -Headers $headers -ContentType 'application/json' -Body $body
+```
 
-No subas `.env` ni claves al repositorio. Esta versión no incluye `package-lock.json`; generá el lock ejecutando `npm install` y commitealo para instalaciones reproducibles.
+## Estado real
+
+Es una entrega incremental. No hay suite de tests todavía; no se comprobó el build contra dependencias descargadas ni el arranque Docker. El lockfile heredado se eliminó para evitar inconsistencias tras cambiar dependencias: ejecutá `npm install` para generar uno nuevo y versionarlo antes de desplegar en producción.

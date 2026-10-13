@@ -25,15 +25,5 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-  worker:
-    build: .
-    command: ["node", "dist/workers/analysis.worker.js"]
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/code_analysis
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
 volumes:
   code_analysis_db:
